@@ -19,7 +19,7 @@ $ sed -i 's/SOME_DISCORD_TOKEN/[..your discord token..]/' .env
 
 or simply
 ```bash
-$ echo 'YOUR_DISCORD_TOKEN' > .env
+$ echo 'DISCORD_TOKEN=SOME_DISCORD_TOKEN' > .env
 ```
 
 For information on how to generate a discord bot token and invite your bot to your channel, see [Creating a Bot Account](https://discordpy.readthedocs.io/en/latest/discord.html "discordpy.readthedocs.io")
