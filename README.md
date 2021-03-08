@@ -1,16 +1,25 @@
-# discord_exalted_die_roller
-A discord bot for rolling exalted dice
-this is a very basic bot but maybe others can get some use out of it.
+Exalted Dice Roller for Discord
+---
 
-install discord via pip
+A discord bot for rolling exalted dice, branching off of [@Shalkith's repo](https://github.com/Shalkith/discord_exalted_die_roller "Shalkith/discord_exalted_die_roller")
 
-pip install discord
+Setup
+---
 
-Paste Discord bot token into the script
-Invite the Bot to your channel
+install via pip:
+```bash
+$ pip install -r requirements.txt
+```
 
-example use:
-!roll 10 
+Then make a copy of `.env-TEMPLATE` and copy-paste your Discord Bot token into there
+```bash
+$ cp .env-TEMPLATE .env
+$ sed -i 's/SOME_DISCORD_TOKEN/[..your discord token..]/' .env
+```
 
+or simply
+```bash
+$ echo 'YOUR_DISCORD_TOKEN' > .env
+```
 
-
+For information on how to generate a discord bot token and invite your bot to your channel, see [Creating a Bot Account](https://discordpy.readthedocs.io/en/latest/discord.html "discordpy.readthedocs.io")
