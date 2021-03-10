@@ -10,13 +10,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      SSH_PRIVATE_KEY: ${{ secrets.DOKKU_KEY }}
       PROJECT_NAME: roller-bot
     steps:
     - uses: actions/checkout@v2
     - uses: webfactory/ssh-agent@v0.5.1
       with: 
-        ssh-private-key: ${{ env.SSH_PRIVATE_KEY }}
+        ssh-private-key: |
+          ${{ secrets.DOKKU_KEY }}
+          
     - name: Deploy to Dokku
       run: |
         ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
