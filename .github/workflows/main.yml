@@ -10,17 +10,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Deploy to Dokku
-      shell: bash
-      env:
-        DISCORD_TOKEN: "${{ secrets.DISCORD_TOKEN }}"
-        DOKKU_KEY: ${{ secrets.DOKKU_KEY }}
-        PROJECT_NAME: roller-bot
-      run: |
-        eval `ssh-agent -s`
-        ssh-add - <<< "$DOKKU_KEY"
-        mkdir -p ~/.ssh
-        ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
-        ssh dokku@dokku-dev.hekaton.studio "dokku config:set --no-restart $PROJECT_NAME DISCORD_TOKEN='$DISCORD_TOKEN'"
-        git-push dokku@dokku-dev.hekaton.studio:${PROJECT_NAME}
+      - uses: actions/checkout@v2
+      - id: deploy
+        name: Deploy to dokku
+        uses: idoberko2/dokku-deploy-github-action@v1
+        with:
+            ssh-private-key: ${{ secrets.DOKKU_KEY }}
+            dokku-host: 'dokku-dev.hekaton.studio'
+            app-name: 'roller-bot'
