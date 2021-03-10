@@ -4,73 +4,39 @@ from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from io import BytesIO
 from dotenv import load_dotenv
 
-load_dotenv('./.env')
+if(os.getenv('DISCORD_TOKEN') is None):
+    load_dotenv('./.env')
 
-#paste in discord token
-#invite the bot
-#type the below command in discord to roll 10 dice (d10s only for exalted)
-#!roll 10
-
-class RollerBot:
+class RollerBot(discord.Client):
     token = os.getenv('DISCORD_TOKEN')
-    def __init__(self):
-        client = discord.Client()
-        @client.event
-        async def on_message(message):
-            return await self.parse_message(message)
-        self.client = client
-        client.run(self.token)
 
-    async def parse_message(self, message):
+    async def start(self):
+        await super().start(self.token)
+
+    async def stop(self):
+        await super().logout()
+
+    async def on_message(self, message):
         user = message.author.mention
         content = message.content.lower()
-        if message.author == self.client.user:
-            return
+        if message.author == self.user:
+            pass
         elif content == '!roll' or content.startswith('!roll help'):
             await message.channel.send(self.help())
+        elif content == '!roll shutdown':
+            await message.channel.send('shutting down')
+            await self.stop()
         elif content.startswith('!rolli '):
-            print('Rolling as an image for', user, ':', content);
+            print('Rolling as an image for', user, ':', content)
             await message.channel.send(**self.parseAsImage(user, self.roll(content)))
         elif content.startswith('!roll '):
-            print('Rolling for', user, ':', content);
+            print('Rolling for', user, ':', content)
             await message.channel.send(**self.parseAsText(user, self.roll(content)))
 
     def help(self):
-        return """```prolog
-Usage: `!roll n [options]`
-
-Options (case insensitive):
-    `rr`    ReRoll: rerolls matching dice until they cease to appear.
-                `!roll 6 rr=1` rerolls 1s until there are none left
-                `!roll 6 rr<7` rerolls `{ 1, 2, 3, 4, 5, 6 }` until none are left
-                rerolled dice DO NOT contribute to results
-
-    `ro`    Reroll Once: as `rr` but each die is only rerolled once.
-
-    `do`    Double: matching faces are counted as 2 successes instead of 1.
-                `!roll 6 do>7` counts 8s, 9s and 10s as double-successes.
-                `!roll 6 do=7` counts only 7s as double-successes
-                default: `=10`
-
-    `fs`    Faces Subtract: matching faces subtract from accumulated successes.
-                `!roll 5 fs<3` would subtract 1s and 2s from successes
-
-    `+N`,   Adds or Subtracts successes to/from the final result, minimum of zero.
-    `-N`        `!roll 2 -3` would roll 2 dice and subtract 3 successes from the result.
-                `!roll 5 +1` would roll 5 dice and add 1 success to the result.
-
-    `*N`,   Multiplies or Divides the final result by 'N'.
-    `/N`        you can specify 'up' or 'dn' for the result to be rounded up or rounded down.
-                default: rounded up.
-
-    `stunt` applies a level 1, 2 or 3 stunt to the roll
-                `stunt 1` provides  +2 dice
-                `stunt 2` provides  +2 dice + 1 success
-                `stunt 3` provides  +2 dice + 2 successes
-
-    `damage`    treats roll as a damage roll: 10s are not doubled unless explicitly specified.
-```"""
-
+        print ('fetching help file')
+        with open('help/usage.md', 'r') as helpfile :
+            return helpfile.read()
 
     def toComparator(self, comparer, target):
         target = int(target)
@@ -242,3 +208,4 @@ Options (case insensitive):
 
 if __name__ == "__main__":
     roller = RollerBot();
+    roller.run()
