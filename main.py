@@ -210,6 +210,6 @@ class RollerBot(discord.Client):
 
 
 if __name__ == "__main__":
-    Flask(__name__).run(environ.get(65001))
+    Flask(__name__).run(65001)
     roller = RollerBot();
     roller.run()
