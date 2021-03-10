@@ -18,7 +18,7 @@ jobs:
         DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
         PROJECT_NAME: roller-bot
       run: |
-        ssh-add - <<< "${{ env.DOKKU_KEY }}" > /dev/null
+        ssh-add - <<< "${DOKKU_KEY}" > /dev/null
         ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
-        ssh dokku@dokku-dev.hekaton.studio "config:set --no-restart ${{ env.PROJECT_NAME }} DISCORD_TOKEN='${{ env.DISCORD_TOKEN }}'"
-        git-push dokku@dokku-dev.hekaton.studio:${{ env.PROJECT_NAME }}
+        ssh dokku@dokku-dev.hekaton.studio "config:set --no-restart ${PROJECT_NAME} DISCORD_TOKEN='${DISCORD_TOKEN}'"
+        git-push dokku@dokku-dev.hekaton.studio:${PROJECT_NAME}
