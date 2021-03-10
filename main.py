@@ -3,6 +3,8 @@ from functools import reduce
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from io import BytesIO
 from dotenv import load_dotenv
+from os import environ
+from flask import Flask
 
 if(os.getenv('DISCORD_TOKEN') is None):
     load_dotenv('./.env')
@@ -206,6 +208,8 @@ class RollerBot(discord.Client):
                 'file' : discord.File(fp=rollImage, filename='result.png')
             }
 
+
 if __name__ == "__main__":
+    Flask(__name__).run(environ.get(65001))
     roller = RollerBot();
     roller.run()
