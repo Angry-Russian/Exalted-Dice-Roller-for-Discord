@@ -15,7 +15,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Deploy to Dokku
       run: |
-        ssh-add - <<< ${{ secrets.DOKKU_KEY }}
+        echo "${{ secrets.DOKKU_KEY }}" | tr -d '\r' | ssh-add - > /dev/null
         ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
         ssh dokku@dokku-dev.hekaton.studio "config:set --no-restart ${{ env.PROJECT_NAME }} DISCORD_TOKEN='${{ secrets.DISCORD_TOKEN }}'"
         git-push dokku@dokku-dev.hekaton.studio:${{ env.PROJECT_NAME }}
