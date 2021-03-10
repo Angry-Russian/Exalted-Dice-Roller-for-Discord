@@ -1,9 +1,8 @@
-import sys, os, re, random, discord, math
+import os, re, random, discord, math
 from functools import reduce
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 from dotenv import load_dotenv
-from os import environ
 
 if(os.getenv('DISCORD_TOKEN') is None):
     load_dotenv('./.env')
@@ -172,7 +171,7 @@ class RollerBot(discord.Client):
         padding = (int((scale - size[0])/2), int((scale-size[1])/2))
 
         canvas = ImageDraw.Draw(img)
-        font = ImageFont.truetype('fonts/Ubuntu Mono derivative Powerline.ttf', int(scale/2))
+        font = ImageFont.truetype('fonts/UbuntuMono-Regular.ttf', int(scale/2))
         for r in range(len(results)) :
             result = results[r]
             x = (r % cols) * scale
@@ -197,7 +196,7 @@ class RollerBot(discord.Client):
 
             img.paste(dieCopy, (x + padding[0], y + padding[1]), die)
             # img.alpha_composite(dieCopy, (x, y))
-            canvas.text((x + scale/2, y + scale/2), face, fill=fill, font=font, anchor='mm')
+            canvas.text((x + scale/2, y + scale/2 - int(scale/16)), face, fill=fill, font=font, anchor='mm')
 
         with BytesIO() as rollImage:
             img.save(rollImage, 'PNG')
