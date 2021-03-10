@@ -15,8 +15,7 @@ jobs:
       shell: bash
       env:
         DISCORD_TOKEN: "${{ secrets.DISCORD_TOKEN }}"
-        DOKKU_KEY: |
-          ${{ secrets.DOKKU_KEY }}
+        DOKKU_KEY: ${{ secrets.DOKKU_KEY }}
         PROJECT_NAME: roller-bot
       run: |
         ssh-add - <<< "$DOKKU_KEY" > /dev/null
