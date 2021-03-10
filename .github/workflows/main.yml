@@ -18,6 +18,7 @@ jobs:
         DOKKU_KEY: ${{ secrets.DOKKU_KEY }}
         PROJECT_NAME: roller-bot
       run: |
+        ssh-agent -s
         ssh-add - <<< "$DOKKU_KEY" > /dev/null
         ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
         ssh dokku@dokku-dev.hekaton.studio "config:set --no-restart $PROJECT_NAME DISCORD_TOKEN='$DISCORD_TOKEN'"
