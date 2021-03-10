@@ -14,8 +14,8 @@ jobs:
     - name: Deploy to Dokku
       shell: bash
       env:
-        DOKKU_KEY: ${{ secrets.DOKKU_KEY }}
-        DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+        DOKKU_KEY: "{{ secrets.DOKKU_KEY }}"
+        DISCORD_TOKEN: "{{ secrets.DISCORD_TOKEN }}"
         PROJECT_NAME: roller-bot
       run: |
         ssh-add - <<< "${DOKKU_KEY}" > /dev/null
