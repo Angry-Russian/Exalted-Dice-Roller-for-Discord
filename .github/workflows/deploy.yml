@@ -1,0 +1,18 @@
+name: Deploy to Dokku
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  deploy:
+    name: Push to Dokku
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_NAME: roller-bot
+    steps:
+    - mkdir -p ~/.ssh && echo "${{secrets.DOKKU_KEY}}" | tr -d '\r' > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
+    - ssh dokku@dokku-dev.hekaton.studio "config:set --no-restart ${{PROJECT_NAME}} DISCORD_TOKEN='${{secrets.DISCORD_TOKEN}}'
+    - git-push dokku@dokku-dev.hekaton.studio:${{PROJECT_NAME}}
