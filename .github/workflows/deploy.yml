@@ -7,12 +7,14 @@ on:
 
 jobs:
   deploy:
-    name: Push to Dokku
     runs-on: ubuntu-latest
     env:
       PROJECT_NAME: roller-bot
     steps:
-    - mkdir -p ~/.ssh && echo "${{ DOKKU_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
-    - ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
-    - ssh dokku@dokku-dev.hekaton.studio "config:set --no-restart ${{ PROJECT_NAME }} DISCORD_TOKEN='${{ DISCORD_TOKEN }}'
-    - git-push dokku@dokku-dev.hekaton.studio:${{ PROJECT_NAME }}
+    - uses: actions/checkout@v2
+    - name: Deploy to Dokku
+    - run: |
+      mkdir -p ~/.ssh && echo "${{ DOKKU_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+      ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
+      ssh dokku@dokku-dev.hekaton.studio "config:set --no-restart ${{ PROJECT_NAME }} DISCORD_TOKEN='${{ DISCORD_TOKEN }}'
+      git-push dokku@dokku-dev.hekaton.studio:${{ PROJECT_NAME }}
