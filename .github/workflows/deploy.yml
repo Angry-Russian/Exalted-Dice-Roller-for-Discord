@@ -10,8 +10,6 @@ jobs:
     name: Push to Dokku
     runs-on: ubuntu-latest
     env:
-      DOKKU_KEY: ${{ secrets.DOKKU_KEY }}
-      DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
       PROJECT_NAME: roller-bot
     steps:
     - mkdir -p ~/.ssh && echo "${{ DOKKU_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
