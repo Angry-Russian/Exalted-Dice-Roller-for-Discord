@@ -13,11 +13,11 @@ jobs:
       PROJECT_NAME: roller-bot
     steps:
     - uses: actions/checkout@v2
+    - uses: webfactory/ssh-agent@v0.5.1
+      with:
+        ssh-private-key: ${{ secrets.DOKKU_KEY }}
     - name: Deploy to Dokku
       run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.DOKKU_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
         ssh dokku@dokku-dev.hekaton.studio "config:set --no-restart ${{ env.PROJECT_NAME }} DISCORD_TOKEN='${{ secrets.DISCORD_TOKEN }}'
         git-push dokku@dokku-dev.hekaton.studio:${{ env.PROJECT_NAME }}"
