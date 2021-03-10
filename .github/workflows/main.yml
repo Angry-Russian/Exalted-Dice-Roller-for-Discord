@@ -10,6 +10,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
+      DOKKU_KEY: ${{ secrets.DOKKU_KEY }}
+      DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
       PROJECT_NAME: roller-bot
     steps:
     - uses: actions/checkout@v2
