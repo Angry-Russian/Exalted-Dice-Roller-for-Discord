@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: webfactory/ssh-agent@v0.5.1
       with: 
-        ssh-private-key: ${{ env.DOKKU_KEY }}
+        ssh-private-key: ${{ env.SSH_PRIVATE_KEY }}
     - name: Deploy to Dokku
       run: |
         ssh-keyscan -H 22 "dokku-dev.hekaton.studio" >> ~/.ssh/known_hosts
