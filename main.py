@@ -1,4 +1,4 @@
-import os, re, random, discord, math
+import sys, os, getopt, re, random, discord, math
 from functools import reduce
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
@@ -9,6 +9,10 @@ if(os.getenv('DISCORD_TOKEN') is None):
 
 class RollerBot(discord.Client):
     token = os.getenv('DISCORD_TOKEN')
+
+    def __init__(self, randrange=random.randrange):
+        super().__init__()
+        self.randrange = randrange
 
     async def start(self):
         await super().start(self.token)
@@ -65,26 +69,21 @@ class RollerBot(discord.Client):
         return d+str(text)+d if applyDecoration is True else str(text)
 
     def roll(self, options):
-        try:
-            options = options.split(' ', 2)
-            command = options.pop(0)
-            dice = int(options.pop(0))
-            if len(options) > 0 :
-                options = options[0]
-            else :
-                options = ''
+        options = options.split(' ', 2)
+        command = options.pop(0)
+        dice = int(options.pop(0))
+        if len(options) > 0 :
+            options = options[0]
+        else :
+            options = ''
 
-        except:
-            return "Unexpected error occured"
-
-        if dice >200:
+        if dice > 200:
             return "That's too many dice, my dude!"
-
 
         damage = re.search(r'(damage)', options) is not None
         stunt = re.search(r'(?<=stunt)\ ?(1|2|3)', options)
         stunt = int(stunt.group(1)) if stunt is not None else 0;
-        t = re.search(r'(?<=t)(\d+)', options)
+        t = re.search(r'(?<=tn)(\d+)', options)
         t = int(t.group(1)) if t is not None else 7;
 
         rr = self.toComparator(*self.remap(re.search(r'(?<=rr)([<>=]=?)(\d+)', options), ('=', 0)))
@@ -103,13 +102,13 @@ class RollerBot(discord.Client):
         success = max(0, stunt - 1)
 
         for x in range(count):
-            result = random.randrange(1,11)
+            result = self.randrange(1,11)
             rerollOnce =  ro(result)
 
             while rerollOnce or rr(result):
                 rerollOnce = False
                 results.append(self.dec(result, '~~'))
-                result = random.randrange(1,11)
+                result = self.randrange(1,11)
 
             succ = t(result)
             double = do(result)
@@ -134,7 +133,7 @@ class RollerBot(discord.Client):
     def parseAsText(self, user, rollResult):
         (count, results, success, added, stunt) = rollResult
 
-        msg = "%s rolled %d dice for %d success%s%s\nroll: [ %s ]%s" % (
+        msg = "%s rolled %d dice for %d success%s%s\nroll:\n[ %s ]%s" % (
             user,
             count,
             success,
@@ -209,4 +208,47 @@ class RollerBot(discord.Client):
 
 if __name__ == "__main__":
     roller = RollerBot();
-    roller.run()
+
+    options = []
+    try:
+        options = getopt.getopt(sys.argv[1:], "dur:i:c:")
+    except getopt.GetoptError as error:
+        print(error)
+        raise SystemExit
+
+    if len(options[0]) == 0:
+        print("""
+        No commands passed, nothing to do. If you're running this as a build command, try adding something like '-r "8 stunt 1"'.
+        """)
+        raise SystemExit;
+
+    username = 'You'
+    def setUser(u):
+        global username
+        username = u
+        return 'Setting username to %s' % u
+
+    daemonize = False
+    def setDaemonize(*args):
+        global daemonize
+        daemonize = True
+        return 'Running daemon after all commands'
+
+    actions = {
+        '-u': setUser,
+        '-d': setDaemonize,
+        '-r': lambda x: roller.parseAsText(username, roller.roll('roll ' + x))['content'],
+        '-i': lambda x: roller.parseAsImage(username, roller.roll('rolli ' + x))['content'],
+        '-c': lambda x: (
+            roller.parseAsImage(username, roller.roll(x)) if x.startswith('rolli ')
+            else roller.parseAsText(username, roller.roll(x)) if x.startswith('roll ')
+            else {'content' : 'command must be "roll" or "rolli"'}
+        )['content'],
+    }
+
+    for option in options[0]:
+        result = actions.get(option[0], lambda x: '... skipping %s ...' % option[0])
+        print(result(option[1]))
+
+    if(daemonize):
+        roller.run()
