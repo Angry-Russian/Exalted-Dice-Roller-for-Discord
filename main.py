@@ -9,6 +9,7 @@ if(os.getenv('DISCORD_TOKEN') is None):
 
 class RollerBot(discord.Client):
     token = os.getenv('DISCORD_TOKEN')
+    prefix = ".r"
 
     def __init__(self, randrange=random.randrange):
         super().__init__()
@@ -25,15 +26,15 @@ class RollerBot(discord.Client):
         content = message.content.lower()
         if message.author == self.user:
             pass
-        elif content == '!roll' or content.startswith('!roll help'):
+        elif content == self.prefix or content.startswith('%s help' % self.prefix):
             await message.channel.send(self.help())
-        elif content == '!roll shutdown':
+        elif content == '%s shutdown' % self.prefix:
             await message.channel.send('shutting down')
             await self.stop()
-        elif content.startswith('!rolli '):
+        elif content.startswith(self.prefix + 'i'):
             print('Rolling as an image for', user, ':', content)
             await message.channel.send(**self.parseAsImage(user, self.roll(content)))
-        elif content.startswith('!roll '):
+        elif content.startswith(self.prefix):
             print('Rolling for', user, ':', content)
             await message.channel.send(**self.parseAsText(user, self.roll(content)))
 
@@ -237,11 +238,11 @@ if __name__ == "__main__":
     actions = {
         '-u': setUser,
         '-d': setDaemonize,
-        '-r': lambda x: roller.parseAsText(username, roller.roll('roll ' + x))['content'],
-        '-i': lambda x: roller.parseAsImage(username, roller.roll('rolli ' + x))['content'],
+        '-r': lambda x: roller.parseAsText(username, roller.roll(roller.prefix + ' ' + x))['content'],
+        '-i': lambda x: roller.parseAsImage(username, roller.roll(roller.prefix + 'i ' + x))['content'],
         '-c': lambda x: (
-            roller.parseAsImage(username, roller.roll(x)) if x.startswith('rolli ')
-            else roller.parseAsText(username, roller.roll(x)) if x.startswith('roll ')
+            roller.parseAsImage(username, roller.roll(x)) if x.startswith(proller.prefix + 'i ')
+            else roller.parseAsText(username, roller.roll(x)) if x.startswith(roller.prefix + ' ')
             else {'content' : 'command must be "roll" or "rolli"'}
         )['content'],
     }
