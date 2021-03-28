@@ -7,6 +7,21 @@ from dotenv import load_dotenv
 if(os.getenv('DISCORD_TOKEN') is None):
     load_dotenv('./.env')
 
+
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
+decorations = dotdict({
+    'double'  : '**', # bold
+    'success' : '__', # underline
+    'reroll'  : '~~'  # strikeout
+})
+
+
 class RollerBot(discord.Client):
     token = os.getenv('DISCORD_TOKEN')
     prefix = ".r"
@@ -39,53 +54,49 @@ class RollerBot(discord.Client):
             await message.channel.send(**self.parseAsText(user, self.roll(content)))
 
     def help(self):
-        print ('fetching help file')
+        print('fetching help file')
         with open('help/usage.md', 'r') as helpfile :
             return helpfile.read()
 
     def toComparator(self, comparer, target):
-        target = int(target)
-        if comparer == ">" :                       return lambda die: die > target;
-        elif comparer == "<" :                     return lambda die: die < target;
-        elif comparer == ">=" :                    return lambda die: die >= target;
-        elif comparer == "<=" :                    return lambda die: die <= target;
-        elif comparer == "=" or comparer == "==" : return lambda die: die == target;
-        return lambda die : False;
+        return {
+            '>'  : lambda die: int(die) > int(target),
+            '<'  : lambda die: int(die) < int(target),
+            '='  : lambda die: int(die) == int(target),
+            '>=' : lambda die: int(die) >= int(target),
+            '<=' : lambda die: int(die) <= int(target),
+        }.get(comparer, lambda die : False)
 
     def toOperator(self, operator, target, round='up'):
-        target = int(target)
-        if operator == '-' :   return lambda s: int(s)-int(target);
-        elif operator == '+' : return lambda s: int(s)+int(target);
-        elif operator == '*' : return lambda s: int(s)*int(target);
-        elif operator == '/' :
-            if round == 'dn' : return lambda s: math.floor(int(s)/int(target));
-            else :             return lambda s: math.ceil(int(s)/int(target));
-        else :                 return lambda s: s
+        return {
+            '-' : lambda s: int(s) - int(target),
+            '+' : lambda s: int(s) + int(target),
+            '*' : lambda s: int(s) * int(target),
+            '/' : lambda s: math.floor(int(s) / int(target)) if round == 'dn'
+             else lambda s: math.ceil(int(s) / int(target)),
+        }.get(operator, lambda s: s)
 
     def remap(self, regexMatch, default):
         if regexMatch is None : return default
         return regexMatch.groups()
 
     def dec(self, text, d, applyDecoration=True):
-        return d+str(text)+d if applyDecoration is True else str(text)
+        return d + str(text) + d if applyDecoration is True else str(text)
 
     def roll(self, options):
-        options = options.split(' ', 2)
-        command = options.pop(0)
+        global decorations
+        options = options.split(' ', 2)[1:] # removes command string
         dice = int(options.pop(0))
         if len(options) > 0 :
             options = options[0]
         else :
             options = ''
 
-        if dice > 200:
-            return "That's too many dice, my dude!"
-
         damage = re.search(r'(damage)', options) is not None
         stunt = re.search(r'(?<=stunt)\ ?(1|2|3)', options)
-        stunt = int(stunt.group(1)) if stunt is not None else 0;
+        stunt = int(stunt.group(1)) if stunt is not None else 0
         t = re.search(r'(?<=tn)(\d+)', options)
-        t = int(t.group(1)) if t is not None else 7;
+        t = int(t.group(1)) if t is not None else 7
 
         rr = self.toComparator(*self.remap(re.search(r'(?<=rr)([<>=]=?)(\d+)', options), ('=', 0)))
         ro = self.toComparator(*self.remap(re.search(r'(?<=ro)([<>=]=?)(\d+)', options), ('=', 0)))
@@ -103,23 +114,23 @@ class RollerBot(discord.Client):
         success = max(0, stunt - 1)
 
         for x in range(count):
-            result = self.randrange(1,11)
-            rerollOnce =  ro(result)
+            result = self.randrange(1, 11)
+            rerollOnce = ro(result)
 
             while rerollOnce or rr(result):
                 rerollOnce = False
-                results.append(self.dec(result, '~~'))
-                result = self.randrange(1,11)
+                results.append(self.dec(result, decorations.reroll))
+                result = self.randrange(1, 11)
 
             succ = t(result)
             double = do(result)
             subtract = fs(result)
 
-            results.append(self.dec(self.dec(result, '**', double or damage and succ), '__', succ))
+            results.append(self.dec(self.dec(result, decorations.double, double), decorations.success, succ))
 
-            if succ : success +=1;
-            if double : success +=1;
-            if subtract : success -=1;
+            if succ : success += 1
+            if double : success += 1
+            if subtract : success -= 1
 
         success = max(0, reduce(lambda total, function: function(total), [
             result_mul,
@@ -141,8 +152,8 @@ class RollerBot(discord.Client):
             '' if success == 1 else 'es',
             ', bummer!' if success <= 0 else '.',
             ', '.join(results),
-            ((' %+ds' % added) if added != 0 else '' ) +
-            ((' %+ds from stunt' % (stunt-1)) if stunt > 0 else '')
+            ((' %+ds' % added) if added != 0 else '') +
+            ((' %+ds from stunt' % (stunt - 1)) if stunt > 0 else '')
         )
 
         if '1' in results and success == 0:
@@ -155,23 +166,23 @@ class RollerBot(discord.Client):
     def parseAsImage(self, user, rollResult):
         (count, results, success, added, stunt) = rollResult
 
-        scale = 128;
+        scale = 128
         cols = min(10, len(results))
         rows = math.ceil(len(results) / cols)
 
-        img = Image.new('RGBA', (cols*scale, rows*scale), (0, 0, 0, 0))
+        img = Image.new('RGBA', (cols * scale, rows * scale), (0, 0, 0, 0))
         die = Image.open('images/Regular D10.png')
-        dieBB = die.getbbox();
+        dieBB = die.getbbox()
 
-        aspectRatio = float(dieBB[2])/float(dieBB[3])
+        aspectRatio = float(dieBB[2]) / float(dieBB[3])
         size = (scale, round(scale / aspectRatio))
         if (aspectRatio < 1) :
             size = (round(scale * aspectRatio), scale)
         die = die.resize(size)
-        padding = (int((scale - size[0])/2), int((scale-size[1])/2))
+        padding = (int((scale - size[0]) / 2), int((scale - size[1]) / 2))
 
         canvas = ImageDraw.Draw(img)
-        font = ImageFont.truetype('fonts/UbuntuMono-Regular.ttf', int(scale/2))
+        font = ImageFont.truetype('fonts/UbuntuMono-Regular.ttf', int(scale / 2))
         for r in range(len(results)) :
             result = results[r]
             x = (r % cols) * scale
@@ -186,8 +197,8 @@ class RollerBot(discord.Client):
 
             if discard :
                 fill = (255, 0, 0, 64)
-                ImageDraw.Draw(dieCopy).line((0, 0) + size, fill=fill, width=int(scale/32))
-                ImageDraw.Draw(dieCopy).line((0, size[1], size[0], 0), fill=fill, width=int(scale/32))
+                ImageDraw.Draw(dieCopy).line((0, 0) + size, fill=fill, width=int(scale / 32))
+                ImageDraw.Draw(dieCopy).line((0, size[1], size[0], 0), fill=fill, width=int(scale / 32))
                 dieCopy.putalpha(128)
             elif crit :
                 fill = (255, 255, 0, 255)
@@ -196,7 +207,7 @@ class RollerBot(discord.Client):
 
             img.paste(dieCopy, (x + padding[0], y + padding[1]), die)
             # img.alpha_composite(dieCopy, (x, y))
-            canvas.text((x + scale/2, y + scale/2 - int(scale/16)), face, fill=fill, font=font, anchor='mm')
+            canvas.text((x + scale / 2, y + scale / 2 - int(scale / 16)), face, fill=fill, font=font, anchor='mm')
 
         with BytesIO() as rollImage:
             img.save(rollImage, 'PNG')
@@ -208,7 +219,7 @@ class RollerBot(discord.Client):
 
 
 if __name__ == "__main__":
-    roller = RollerBot();
+    roller = RollerBot()
 
     options = []
     try:
@@ -221,15 +232,17 @@ if __name__ == "__main__":
         print("""
         No commands passed, nothing to do. If you're running this as a build command, try adding something like '-r "8 stunt 1"'.
         """)
-        raise SystemExit;
+        raise SystemExit
 
     username = 'You'
+
     def setUser(u):
         global username
         username = u
         return 'Setting username to %s' % u
 
     daemonize = False
+
     def setDaemonize(*args):
         global daemonize
         daemonize = True
@@ -241,7 +254,7 @@ if __name__ == "__main__":
         '-r': lambda x: roller.parseAsText(username, roller.roll(roller.prefix + ' ' + x))['content'],
         '-i': lambda x: roller.parseAsImage(username, roller.roll(roller.prefix + 'i ' + x))['content'],
         '-c': lambda x: (
-            roller.parseAsImage(username, roller.roll(x)) if x.startswith(proller.prefix + 'i ')
+            roller.parseAsImage(username, roller.roll(x)) if x.startswith(roller.prefix + 'i ')
             else roller.parseAsText(username, roller.roll(x)) if x.startswith(roller.prefix + ' ')
             else {'content' : 'command must be "roll" or "rolli"'}
         )['content'],
