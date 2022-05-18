@@ -11,6 +11,11 @@ install via pip:
 $ pip install -r requirements.txt
 ```
 
+or via pipenv:
+```bash
+$ pipenv install $(cat requirements.txt)
+```
+
 Then make a copy of `.env-TEMPLATE` and copy-paste your Discord Bot token into there
 ```bash
 $ cp .env-TEMPLATE .env
