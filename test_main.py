@@ -1,3 +1,4 @@
+#/usr/bin/env -S pipenv run python
 from main import RollerBot
 import unittest
 
@@ -77,9 +78,17 @@ class RollerBotTester(unittest.TestCase):
         self.assertEqual(1, stunt)
 
     def test_parseAsText(self):
-        result = self.roller.parseAsText('@test_user', self.roller.roll('!roll 23 rr<=2 ro<7 do>6'))
+        # sample result from '!roll 23 rr<=2 ro<7 do>6'
+        roll = (23, [
+            '~~1~~', '~~2~~', '3', '~~4~~', '5', '~~6~~', '__**7**__', '__**8**__', '__**9**__', '__**10**__',
+            '~~1~~', '~~2~~', '3', '~~4~~', '5', '~~6~~', '__**7**__', '__**8**__', '__**9**__', '__**10**__',
+            '~~1~~', '~~2~~', '3', '~~4~~', '5', '~~6~~', '__**7**__', '__**8**__', '__**9**__', '__**10**__',
+            '~~1~~', '~~2~~', '3', '~~4~~', '5', '~~6~~', '__**7**__', '__**8**__', '__**9**__'
+        ], 30, 3, 2)
+
+        result = self.roller.parseAsText('@test_user', roll)
         self.assertEqual({
-            'content': "@test_user rolled 23 dice for 30 successes.\n"
+            'content': "@test_user rolled 23 dice for 30 successes. 26s rolled +3s bonus +1s from stunt\n"
                 + "roll:\n"
                 + "[ "
                     + "~~1~~, ~~2~~, 3, ~~4~~, 5, ~~6~~, __**7**__, __**8**__, __**9**__, __**10**__, "

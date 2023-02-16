@@ -1,4 +1,5 @@
-import sys, os, getopt, re, random, discord, math
+#!/usr/bin/env -S pipenv run python
+import sys, os, getopt, re, random, discord, math, collections.abc
 from functools import reduce
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
@@ -62,7 +63,7 @@ class RollerBot(discord.Client):
         return {
             '>'  : lambda die: int(die) > int(target),
             '<'  : lambda die: int(die) < int(target),
-            '='  : lambda die: int(die) == int(target),
+            '='  : lambda die: (int(die) in [ int(i) for i in target[1:-1].split(',') ] ) if isinstance(target, str) else int(die) == int(target),
             '>=' : lambda die: int(die) >= int(target),
             '<=' : lambda die: int(die) <= int(target),
         }.get(comparer, lambda die : False)
@@ -72,8 +73,7 @@ class RollerBot(discord.Client):
             '-' : lambda s: int(s) - int(target),
             '+' : lambda s: int(s) + int(target),
             '*' : lambda s: int(s) * int(target),
-            '/' : lambda s: math.floor(int(s) / int(target)) if round == 'dn'
-             else lambda s: math.ceil(int(s) / int(target)),
+            '/' : lambda s: math.floor(int(s) / int(target)) if round == 'dn' else lambda s: math.ceil(int(s) / int(target)),
         }.get(operator, lambda s: s)
 
     def remap(self, regexMatch, default):
@@ -98,10 +98,11 @@ class RollerBot(discord.Client):
         t = re.search(r'(?<=tn)(\d+)', options)
         t = int(t.group(1)) if t is not None else 7
 
-        rr = self.toComparator(*self.remap(re.search(r'(?<=rr)([<>=]=?)(\d+)', options), ('=', 0)))
-        ro = self.toComparator(*self.remap(re.search(r'(?<=ro)([<>=]=?)(\d+)', options), ('=', 0)))
-        fs = self.toComparator(*self.remap(re.search(r'(?<=fs)([<>=]=?)(\d+)', options), ('=', 0)))
-        do = self.toComparator(*self.remap(re.search(r'(?<=do)([<>=]=?)(\d+)', options), ('=', 10 if damage is False else 0)))
+        rr = self.toComparator(*self.remap(re.search(r'(?<=rr)([<>=]?=?)(\d+|{[\d,]+})', options), ('=', 0)))
+        ro = self.toComparator(*self.remap(re.search(r'(?<=ro)([<>=]?=?)(\d+|{[\d,]+})', options), ('=', 0)))
+        ex = self.toComparator(*self.remap(re.search(r'(?<=ex)([<>=]?=?)(\d+|{[\d,]+})', options), ('=', 0)))
+        fs = self.toComparator(*self.remap(re.search(r'(?<=fs)([<>=]?=?)(\d+|{[\d,]+})', options), ('=', 0)))
+        do = self.toComparator(*self.remap(re.search(r'(?<=do)([<>=]?=?)(\d+|{[\d,]+})', options), ('=', 10 if damage is False else 0)))
         t =  self.toComparator('>=', t)
 
         result_add = self.toOperator(*self.remap(re.search(r'(\+)(\d+)', options), ('=', 0)))
@@ -113,7 +114,10 @@ class RollerBot(discord.Client):
         results = []
         success = max(0, stunt - 1)
 
-        for x in range(count):
+        # for x in range(count):
+        diceRemaining = count
+        while diceRemaining > 0:
+            diceRemaining -= 1
             result = self.randrange(1, 11)
             rerollOnce = ro(result)
 
@@ -124,6 +128,7 @@ class RollerBot(discord.Client):
 
             succ = t(result)
             double = do(result)
+            explode = ex(result)
             subtract = fs(result)
 
             results.append(self.dec(self.dec(result, decorations.double, double), decorations.success, succ))
@@ -131,6 +136,7 @@ class RollerBot(discord.Client):
             if succ : success += 1
             if double : success += 1
             if subtract : success -= 1
+            if explode : diceRemaining += 1
 
         success = max(0, reduce(lambda total, function: function(total), [
             result_mul,
@@ -143,25 +149,26 @@ class RollerBot(discord.Client):
         return (count, results, success, added, stunt)
 
     def parseAsText(self, user, rollResult):
-        (count, results, success, added, stunt) = rollResult
+        if user is None:
+            user = "You"
+        return { 'content': user + " " + self.describeResult(rollResult) }
 
-        msg = "%s rolled %d dice for %d success%s%s\nroll:\n[ %s ]%s" % (
-            user,
+    def describeResult(self, rollResult, showRoll=True):
+        (count, results, success, added, stunt) = rollResult
+        roll= "\nroll:\n[ %s ]" % ', '.join(results)
+        msg = "rolled %d dice for %d success%s%s%s%s" % (
             count,
             success,
             '' if success == 1 else 'es',
-            ', bummer!' if success <= 0 else '.',
-            ', '.join(results),
-            ((' %+ds' % added) if added != 0 else '') +
-            ((' %+ds from stunt' % (stunt - 1)) if stunt > 0 else '')
+            '. **Critical Failure!**' if '1' in results and success == 0 else ', bummer!' if success <= 0 else '.',
+            (( ' %ds rolled' % (success - added - max(0, stunt - 1))) if success > 0 and added+max(0,stunt-1) > 0 else '') +
+            ((' %+ds bonus' % added) if added != 0 else '') +
+            ((' %+ds from stunt' % (stunt - 1)) if stunt > 1 else ''),
+            roll if showRoll else ''
         )
 
-        if '1' in results and success == 0:
-            msg = msg + '\n**Critical Fail**'
+        return msg
 
-        return {
-            'content': msg
-        }
 
     def parseAsImage(self, user, rollResult):
         (count, results, success, added, stunt) = rollResult
@@ -213,7 +220,7 @@ class RollerBot(discord.Client):
             img.save(rollImage, 'PNG')
             rollImage.seek(0)
             return {
-                'content' : '%s rolls %d dice, getting %d success%s!' % (user, count, success, 'es' if success != 1 else ''),
+                'content' : self.describeResult(rollResult, false),
                 'file' : discord.File(fp=rollImage, filename='result.png')
             }
 
