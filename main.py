@@ -74,7 +74,7 @@ class RollerBot(discord.Client):
         return {
             '>'  : lambda die: int(die) > int(target),
             '<'  : lambda die: int(die) < int(target),
-            '='  : lambda die: (int(die) in [ int(i) for i in target[1:-1].split(',') ] ) if isinstance(target, str) else int(die) == int(target),
+            '='  : lambda die: int(die) in target if isinstance(target, list) else int(die) == int(target),
             '>=' : lambda die: int(die) >= int(target),
             '<=' : lambda die: int(die) <= int(target),
         }.get(comparer, lambda die : False)
