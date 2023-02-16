@@ -220,7 +220,7 @@ class RollerBot(discord.Client):
             img.save(rollImage, 'PNG')
             rollImage.seek(0)
             return {
-                'content' : self.describeResult(rollResult, false),
+                'content' : self.describeResult(rollResult, False),
                 'file' : discord.File(fp=rollImage, filename='result.png')
             }
 
