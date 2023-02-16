@@ -40,26 +40,37 @@ class RollerBot(discord.Client):
     async def on_message(self, message):
         user = message.author.mention
         content = message.content.lower()
-        if message.author == self.user:
-            pass
-        elif content == self.prefix or content.startswith('%s help' % self.prefix):
-            await message.channel.send(self.help())
-        elif content == '%s shutdown' % self.prefix:
-            await message.channel.send('shutting down')
-            await self.stop()
-        elif content.startswith(self.prefix + 'i'):
-            print('Rolling as an image for', user, ':', content)
-            await message.channel.send(**self.parseAsImage(user, self.roll(content)))
-        elif content.startswith(self.prefix):
-            print('Rolling for', user, ':', content)
-            await message.channel.send(**self.parseAsText(user, self.roll(content)))
+        response = None
+        try:
+            if message.author == self.user:
+                return
+            elif content == self.prefix or content.startswith('%s help' % self.prefix):
+                response = { content: self.help() }
+            elif content == '%s shutdown' % self.prefix:
+                response = { content: 'shutting down' }
+                await self.stop()
+            elif content.startswith(self.prefix + 'i '):
+                response = self.parseAsImage(user, self.roll(content))
+            elif content.startswith(self.prefix + ' '):
+                response = self.parseAsText(user, self.roll(content))
+        except Exception as e:
+            response.content = str(e)
+        finally:
+            if response is not None:
+                await message.channel.send(**response)
 
     def help(self):
-        print('fetching help file')
         with open('help/usage.md', 'r') as helpfile :
             return helpfile.read()
 
     def toComparator(self, comparer, target):
+        if comparer == '==' :
+            comparer = '='
+        if isinstance(target, str) and not target.isnumeric():
+            target = re.sub('[^\d,]', '', target)
+            if target and comparer == '=':
+                target = [ int(t) for t in target.split(',') ]
+            else: raise Exception('Cannot create comparator [%s] with target [%s]' % (comparer, target))
         return {
             '>'  : lambda die: int(die) > int(target),
             '<'  : lambda die: int(die) < int(target),
@@ -148,11 +159,6 @@ class RollerBot(discord.Client):
         added = result_sub(result_add(0))
         return (count, results, success, added, stunt)
 
-    def parseAsText(self, user, rollResult):
-        if user is None:
-            user = "You"
-        return { 'content': user + " " + self.describeResult(rollResult) }
-
     def describeResult(self, rollResult, showRoll=True):
         (count, results, success, added, stunt) = rollResult
         roll= "\nroll:\n[ %s ]" % ', '.join(results)
@@ -169,6 +175,10 @@ class RollerBot(discord.Client):
 
         return msg
 
+    def parseAsText(self, user, rollResult):
+        if user is None:
+            user = "You"
+        return { 'content': user + " " + self.describeResult(rollResult) }
 
     def parseAsImage(self, user, rollResult):
         (count, results, success, added, stunt) = rollResult
@@ -220,7 +230,7 @@ class RollerBot(discord.Client):
             img.save(rollImage, 'PNG')
             rollImage.seek(0)
             return {
-                'content' : self.describeResult(rollResult, false),
+                'content' : user + " " + self.describeResult(rollResult, false),
                 'file' : discord.File(fp=rollImage, filename='result.png')
             }
 
@@ -268,8 +278,11 @@ if __name__ == "__main__":
     }
 
     for option in options[0]:
-        result = actions.get(option[0], lambda x: '... skipping %s ...' % option[0])
-        print(result(option[1]))
+        try:
+            result = actions.get(option[0], lambda x: '... skipping %s ...' % option[0])
+            print(result(option[1]))
+        except Exception as e:
+            print(str(e))
 
     if(daemonize):
         roller.run()
