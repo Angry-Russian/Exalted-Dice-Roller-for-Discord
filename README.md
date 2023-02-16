@@ -11,6 +11,11 @@ install via pip:
 $ pip install -r requirements.txt
 ```
 
+or via pipenv:
+```bash
+$ pipenv install $(cat requirements.txt)
+```
+
 Then make a copy of `.env-TEMPLATE` and copy-paste your Discord Bot token into there
 ```bash
 $ cp .env-TEMPLATE .env
@@ -23,3 +28,13 @@ $ echo 'DISCORD_TOKEN=SOME_DISCORD_TOKEN' > .env
 ```
 
 For information on how to generate a discord bot token and invite your bot to your channel, see [Creating a Bot Account](https://discordpy.readthedocs.io/en/latest/discord.html "discordpy.readthedocs.io")
+
+Run
+---
+```bash
+$ pipenv run python ./main.py -r '12 +2 stunt 2'
+```
+
+Test
+---
+$ pipenv run python ./test_main.py
