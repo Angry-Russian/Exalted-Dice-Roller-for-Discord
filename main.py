@@ -54,7 +54,7 @@ class RollerBot(discord.Client):
             elif content.startswith(self.prefix + ' '):
                 response = self.parseAsText(user, self.roll(content))
         except Exception as e:
-            response.content = str(e)
+            response = { coontent: str(e) }
         finally:
             if response is not None:
                 await message.channel.send(**response)
