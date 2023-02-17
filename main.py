@@ -1,7 +1,7 @@
 #!/usr/bin/env -S pipenv run python
-import sys, os, getopt, re, random, discord, math, collections.abc
+import sys, os, getopt, re, random, discord, math, collections.abc, json
 from functools import reduce
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from io import BytesIO
 from dotenv import load_dotenv
 
@@ -17,9 +17,10 @@ class dotdict(dict):
 
 
 decorations = dotdict({
-    'double'  : '**', # bold
-    'success' : '__', # underline
-    'reroll'  : '~~'  # strikeout
+    'double'  : '**%s**', # bold
+    'success' : '__%s__', # underline
+    'reroll'  : '~~%s~~', # strikeout
+    'explode' : '((%s))'  # doesn't actually decorate the text
 })
 
 
@@ -38,26 +39,28 @@ class RollerBot(discord.Client):
         await super().logout()
 
     async def on_message(self, message):
+        response = self.createResponse(message)
+        if response is not None:
+            print('Sending response:', response);
+            await message.channel.send(**response)
+
+    def createResponse(self, message):
         user = message.author.mention
         content = message.content.lower()
-        response = None
+        result = None
         try:
             if message.author == self.user:
-                return
+                return result
             elif content == self.prefix or content.startswith('%s help' % self.prefix):
-                response = { content: self.help() }
-            elif content == '%s shutdown' % self.prefix:
-                response = { content: 'shutting down' }
-                await self.stop()
+                result = { 'content': self.help() }
             elif content.startswith(self.prefix + 'i '):
-                response = self.parseAsImage(user, self.roll(content))
+                result = self.parseAsImage(user, self.roll(content))
             elif content.startswith(self.prefix + ' '):
-                response = self.parseAsText(user, self.roll(content))
+                result = self.parseAsText(user, self.roll(content))
         except Exception as e:
-            response = { coontent: str(e) }
+            result = { 'content': str(e) }
         finally:
-            if response is not None:
-                await message.channel.send(**response)
+            return result
 
     def help(self):
         with open('help/usage.md', 'r') as helpfile :
@@ -92,7 +95,7 @@ class RollerBot(discord.Client):
         return regexMatch.groups()
 
     def dec(self, text, d, applyDecoration=True):
-        return d + str(text) + d if applyDecoration is True else str(text)
+        return d % str(text) if applyDecoration is True else str(text)
 
     def roll(self, options):
         global decorations
@@ -142,7 +145,11 @@ class RollerBot(discord.Client):
             explode = ex(result)
             subtract = fs(result)
 
-            results.append(self.dec(self.dec(result, decorations.double, double), decorations.success, succ))
+            result=self.dec(result, decorations.explode, explode)
+            result=self.dec(result, decorations.double, double)
+            result=self.dec(result, decorations.success, succ)
+
+            results.append(result)
 
             if succ : success += 1
             if double : success += 1
@@ -189,6 +196,9 @@ class RollerBot(discord.Client):
 
         img = Image.new('RGBA', (cols * scale, rows * scale), (0, 0, 0, 0))
         die = Image.open('images/Regular D10.png')
+        # explode = Image.open('images/1891.png')
+        explode = Image.open('images/616500.png')
+        # explode = explode.filter(filter=ImageFilter.EMBOSS)
         dieBB = die.getbbox()
 
         aspectRatio = float(dieBB[2]) / float(dieBB[3])
@@ -196,6 +206,7 @@ class RollerBot(discord.Client):
         if (aspectRatio < 1) :
             size = (round(scale * aspectRatio), scale)
         die = die.resize(size)
+        explode = explode.resize([ round(i*1) for i in size])
         padding = (int((scale - size[0]) / 2), int((scale - size[1]) / 2))
 
         canvas = ImageDraw.Draw(img)
@@ -204,13 +215,15 @@ class RollerBot(discord.Client):
             result = results[r]
             x = (r % cols) * scale
             y = math.floor(r / cols) * scale
-            crit = '**' in result
-            succ = '__' in result
+            crit =    '**' in result
+            succ =    '__' in result
+            expl =    '((' in result
             discard = '~~' in result
 
             face = re.search(r'(\d+)', result).group(1)
             dieCopy = die.copy()
             fill = (0, 0, 0, 255)
+
 
             if discard :
                 fill = (255, 0, 0, 64)
@@ -222,7 +235,14 @@ class RollerBot(discord.Client):
             elif succ :
                 fill = (255, 128, 0, 255)
 
+
             img.paste(dieCopy, (x + padding[0], y + padding[1]), die)
+
+            if expl :
+                img.paste(
+                    Image.blend(dieCopy, explode, 0.125)
+                    ,(x + padding[0], y + padding[1])
+                )
             # img.alpha_composite(dieCopy, (x, y))
             canvas.text((x + scale / 2, y + scale / 2 - int(scale / 16)), face, fill=fill, font=font, anchor='mm')
 
@@ -230,7 +250,7 @@ class RollerBot(discord.Client):
             img.save(rollImage, 'PNG')
             rollImage.seek(0)
             return {
-                'content' : user + " " + self.describeResult(rollResult, false),
+                'content' : user + " " + self.describeResult(rollResult, False),
                 'file' : discord.File(fp=rollImage, filename='result.png')
             }
 
